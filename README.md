@@ -9,7 +9,7 @@ The R package permits to compute Morse-Smale Complex decompositions and implemen
 
 ```R
 library(devtools)
-devtools::install_github("samuelgerber/msr)
+devtools::install_github("samuelgerber/msr")
 ```
 
 ## More Information
