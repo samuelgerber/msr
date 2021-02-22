@@ -22,10 +22,10 @@ class NNMSComplexR2{
 
   private:
     typedef std::pair<int, int> pair_i;
-    
+
     typedef std::set<int> set_i;
     typedef set_i::iterator set_i_it;
-    
+
     typedef std::set<pair_i> set_pi;
     typedef set_pi::iterator set_pi_it;
 
@@ -40,34 +40,34 @@ class NNMSComplexR2{
 
     typedef std::map< pair_i, set_i > map_pi_si;
     typedef map_pi_si::iterator map_pi_si_it;
-    
 
-    //Steepest ascending KNNG(0,) and descending KNNG(1, ) neighbros for each point    
+
+    //Steepest ascending KNNG(0,) and descending KNNG(1, ) neighbros for each point
     FortranLinalg::DenseMatrix<int> KNNG;
 
     //Data points
     FortranLinalg::DenseMatrix<TPrecision> X;
     FortranLinalg::DenseVector<TPrecision> y;
-    //extrema ID for ach point --- max extrema(0, ) and min extrema(1, ) 
+    //extrema ID for ach point --- max extrema(0, ) and min extrema(1, )
     FortranLinalg::DenseMatrix<int> extrema;
 
-    //map of crystals as <max, min> -> set of points in crystal 
+    //map of crystals as <max, min> -> set of points in crystal
     map_pi_si crystals;
     map_pi_si *crystalHistory;
     int nLevels;
     //map of crystals to R2 based on linear fit or -1/n if number of points n
     //too small for R2 statistic
     map_pi_d r2;
-    
+
     //connections of maxima (to minima) and minima (to maxima)
     map_i_si connections;
 
     FortranLinalg::DenseVector<TPrecision> persistence;
-    
-    
+
+
     //extrema ID to index into X
     FortranLinalg::DenseVector<int> extremaIndex;
-    
+
     //number of maxima, first nMax entries in extremaIndex are maxima
     int nMax;
 
@@ -108,7 +108,7 @@ class NNMSComplexR2{
           mean += y(xindex);
         }
         mean/=n;
-        double sse = 0; 
+        double sse = 0;
         DenseMatrix<TPrecision> coef = Linalg<TPrecision>::LeastSquares(A, b, &sse);
         double sst = 0;
 	for(set_i_it it = points.begin(); it != points.end(); ++it, ++index){
@@ -121,12 +121,12 @@ class NNMSComplexR2{
         coef.deallocate();
         //adjusted R^2 weighted by crystal size
         return ( 1-(sse/sst)*(n-1.0)/(n-X.M()-1.0) )  * n / (double) X.N();
-      } 
+      }
    };
 
 
 
-   void doMerge(pair_i m){  
+   void doMerge(pair_i m){
       int e1 = m.first;
       int e2 = m.second;
       set_i &cons1 = connections[e1];
@@ -145,9 +145,9 @@ class NNMSComplexR2{
         }
         map_pi_si_it p1it = crystals.find(p1);
         //is there something to merge?
-        if( p1it != crystals.end()){ 
+        if( p1it != crystals.end()){
           map_pi_si_it p2it = crystals.find(p2);
-          if(p2it != crystals.end() ){         
+          if(p2it != crystals.end() ){
             set_i &s1 = p1it->second;
             set_i &s2 = p2it->second;
             s2.insert(s1.begin(), s1.end());
@@ -171,12 +171,12 @@ class NNMSComplexR2{
         if( c.erase(e1) == 1){
           c.insert(e2);
         }
-      } 
+      }
    };
 
 
    double testMerge(pair_i m, double curR2){
-      //curR2 = curR2*crystals.size(); 
+      //curR2 = curR2*crystals.size();
       int nmerges = 0;
       int e1 = m.first;
       int e2 = m.second;
@@ -203,7 +203,7 @@ class NNMSComplexR2{
           set_i sa = s1;
           sa.insert(s2.begin(), s2.end());
           double r2a = fitLM(sa);
-          double r21 = r2[p1];  
+          double r21 = r2[p1];
           double r22 = r2[p2];
           if(r2a < 0 ){
             improve -=   (r21 + r22);
@@ -211,17 +211,18 @@ class NNMSComplexR2{
           else{
             improve += r2a - (r21 + r22);
           }
-            //+ (X.M()+1)( 2*( log( s1.size() + s2.size()) ) - log( sa.size() ) );  
+            //+ (X.M()+1)( 2*( log( s1.size() + s2.size()) ) - log( sa.size() ) );
         }
       }
       return improve;// / (crystals.size() - nmerges);
    };
 
-   
+
 
   public:
 
-    NNMSComplexR2(FortranLinalg::DenseMatrix<TPrecision> &Xin, FortranLinalg::DenseVector<TPrecision> &yin, int
+    NNMSComplexR2(FortranLinalg::DenseMatrix<TPrecision> &Xin,
+        FortranLinalg::DenseVector<TPrecision> &yin, int
         knn, int nl = -1, bool smooth = false, double eps=0.1) : X(Xin), y(yin){
      using namespace FortranLinalg;
       nLevels = nl;
@@ -267,7 +268,7 @@ class NNMSComplexR2{
           else if(G(1, i) > g){
             G(1, i) = g;
             KNNG(1, i) = j;
-          }          
+          }
           if(G(0, j) < -g){
             G(0, j) = -g;
             KNNG(0, j) = i;
@@ -287,7 +288,7 @@ class NNMSComplexR2{
 
       //compute for each point its minimum and maximum based on
       //steepest ascent/descent
-      extrema = DenseMatrix<int>(2, X.N()); 
+      extrema = DenseMatrix<int>(2, X.N());
       Linalg<int>::Set(extrema, -1);
 
       std::list<int> extremaL;
@@ -324,7 +325,7 @@ class NNMSComplexR2{
             }
             for(std::list<int>::iterator it = path.begin(); it!=path.end(); ++it){
               extrema(e, *it) = ext;
-            }   
+            }
           }
         }
       }
@@ -339,7 +340,7 @@ class NNMSComplexR2{
       //for each crystal fit linear model - if not enough points for r2
       //statistic set to 1/n with n the number of crystals in the peak. This
       //merges smallest crystals first and then based on linear fit.
-      
+
       //create lowest persistence point assignments
       //store extrema connections min->max and max -> min
       for(int i=0; i<extrema.N(); i++){
@@ -357,8 +358,8 @@ class NNMSComplexR2{
         s.insert(extremaIndex(p.first));
         s.insert(extremaIndex(p.second));
       }*/
-     
-      /* 
+
+      /*
       for(int i=0; i < extrema.N(); i++){
         int max1 = extrema(0, i);
         int min1 = extrema(1, i);
@@ -384,8 +385,8 @@ class NNMSComplexR2{
           }
         }
       }
-      
-      
+
+
 
 
       //compute inital r2 of crystals
@@ -394,11 +395,11 @@ class NNMSComplexR2{
         double r = fitLM(points);
         r2[it->first] = r;
       }
-      
 
-     
+
+
       //check possible merges (adjacent mins and maxs) for reduction in r2
-      
+
       //stire history from 1 through nLevels
       //if nLevels < 0 store best one
       if(nLevels < 0){
@@ -421,8 +422,8 @@ class NNMSComplexR2{
         }
         //curR2 /= r2.size();
         persistence(persistence.N() - connections.size() + 1) = curR2;
-        
- 
+
+
         //std::cout << "#Crystals: " << crystals.size() << std::endl;
         //std::cout << "#Extrema: " << connections.size() << std::endl;
         //std::cout << "R2: " << curR2 << std::endl;
@@ -445,8 +446,8 @@ class NNMSComplexR2{
                   best = tmp;
              	    bestMerge = m;
                 }
-              } 
-            } 
+              }
+            }
           }
         }
 
@@ -454,7 +455,7 @@ class NNMSComplexR2{
         if(nLevels < 0){
            if(best <= 0 ){
              crystalHistory[0] = crystals;
-             break;       
+             break;
            }
         }
         else if(nLevels >= connections.size() - 1){
@@ -473,13 +474,13 @@ class NNMSComplexR2{
           else{
             for(int n = next; n < nLevels; n++){
               //std::cout << n <<std::endl;
-              crystalHistory[n] = crystals; 
+              crystalHistory[n] = crystals;
             }
           }
           break;
         }
       }
-  
+
       KNN.deallocate();
     };
 
@@ -522,7 +523,7 @@ class NNMSComplexR2{
 
     int getNAllExtrema(){
       return extremaIndex.N();
-    }; 
+    };
 
     //return extrema indicies (first row is max, secon is min) for each crystal
     FortranLinalg::DenseMatrix<int> getExtrema(){
@@ -560,7 +561,7 @@ class NNMSComplexR2{
         vmins(crystalIndex) = extremaIndex(p.second);
       }
     };
-    
+
     //get persistencies
     FortranLinalg::DenseVector<TPrecision> getPersistence(){
      using namespace FortranLinalg;
@@ -585,5 +586,5 @@ class NNMSComplexR2{
 
 };
 
-#endif 
+#endif
 

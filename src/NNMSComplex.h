@@ -1,6 +1,6 @@
 //Morse-Smale complex computation as described in:
-// Gerber S, Bremer PT, Pascucci V, Whitaker R (2010). 
-// “Visual Exploration of High Dimensional Scalar Functions.” 
+// Gerber S, Bremer PT, Pascucci V, Whitaker R (2010).
+// “Visual Exploration of High Dimensional Scalar Functions.”
 // IEEE Transactions on Visualization and Computer Graphics, 16(6), 1271–1280.
 
 //author: Samuel Gerber
@@ -32,34 +32,34 @@ class NNMSComplex{
 
     typedef std::multimap< int, std::pair<int, int> > mmap_i_pi;
     typedef mmap_i_pi::iterator mmap_i_pi_it;
-    
+
     typedef typename std::map< std::pair<int, int>, TPrecision > map_pi_f;
     typedef typename map_pi_f::iterator map_pi_f_it;
-    
+
     typedef typename std::map< TPrecision, std::pair<int, int>, std::less<TPrecision>  > map_f_pi;
     typedef typename map_f_pi::iterator map_f_pi_it;
 
 
-    //Steepest ascending KNNG(0,) and descending KNNG(1, ) neighbors for each point    
+    //Steepest ascending KNNG(0,) and descending KNNG(1, ) neighbors for each point
     FortranLinalg::DenseMatrix<int> KNNG;
 
     //Data points
     FortranLinalg::DenseMatrix<TPrecision> X;
     FortranLinalg::DenseVector<TPrecision> y;
-      
+
     FortranLinalg::DenseMatrix<int> KNN;
     FortranLinalg::DenseMatrix<TPrecision> KNND;
-    
 
-    //extrema ID for ach point --- max extrema(0, ) and min extrema(1, ) 
+
+    //extrema ID for ach point --- max extrema(0, ) and min extrema(1, )
     FortranLinalg::DenseMatrix<int> extrema;
 
-    //map of crystals as <max, min> -> crystal ID    
+    //map of crystals as <max, min> -> crystal ID
     map_pi_i crystals;
     //map after merging for reduced set of crystals
     map_pi_i pcrystals;
-    
-    
+
+
     //inital persistencies for each crystal
     map_f_pi persistence;
 
@@ -98,12 +98,12 @@ class NNMSComplex{
       pcrystals.clear();
       for(map_pi_i_it it = crystals.begin(); it != crystals.end(); ++it){
         std::pair<int, int> p = (*it).first;
-        
-        
+
+
         //follow merge chains for min and max
         p.first = merge(p.first);
         p.second = merge(p.second);
-        
+
         //check if we created a new crystal otherwise assign to existing
         //crystal
         map_pi_i_it ito = pcrystals.find(p);
@@ -118,13 +118,13 @@ class NNMSComplex{
 
 
     NNMSComplex(FortranLinalg::DenseMatrix<TPrecision> &Xin, FortranLinalg::DenseVector<TPrecision> &yin,
-                FortranLinalg::DenseMatrix<int> &KNNin, FortranLinalg::DenseMatrix<TPrecision> &KNNDin, 
+                FortranLinalg::DenseMatrix<int> &KNNin, FortranLinalg::DenseMatrix<TPrecision> &KNNDin,
                 bool smooth = false, double sigma2=0) : X(Xin), y(yin), KNN(KNNin), KNND(KNNDin){
       runMS(smooth, sigma2);
 
     };
 
- 
+
     NNMSComplex(FortranLinalg::DenseMatrix<TPrecision> &Xin, FortranLinalg::DenseVector<TPrecision> &yin, int
         knn, bool smooth = false, double eps=0.01, double sigma2=0) : X(Xin), y(yin){
       if(knn > (int) X.N()){
@@ -137,8 +137,8 @@ class NNMSComplex{
       //ANNWrapper<TPrecision>::computeANN(X, KNN, KNND, eps);
       SquaredEuclideanMetric<TPrecision> dist;
       Distance<TPrecision>::computeKNN(X, KNN, KNND, dist);
-      
-      runMS(smooth, sigma2);      
+
+      runMS(smooth, sigma2);
       KNN.deallocate();
       KNND.deallocate();
     };
@@ -153,24 +153,24 @@ class NNMSComplex{
     //extrema with a absolute difference between saddle and lower exterma
     //smaller than pLevel, are recursively joined into a single extrema.
     void mergePersistence(TPrecision pLevel){
-      //compute merge chain 
+      //compute merge chain
       for(unsigned int i=0; i<merge.N(); i++){
         merge(i) = i;
-      } 
-      
+      }
 
-  
+
+
       for(map_f_pi_it it = persistence.begin(); it != persistence.end() && (*it).first < pLevel; ++it){
-        std::pair<int, int> p = (*it).second;        
+        std::pair<int, int> p = (*it).second;
         p.first = followChain(p.first);
         p.second = followChain(p.second);
         if(p.first < nMax){
-          if( y(extremaIndex(p.first)) > y(extremaIndex(p.second)) ){ 
-            std::swap(p.second, p.first); 
+          if( y(extremaIndex(p.first)) > y(extremaIndex(p.second)) ){
+            std::swap(p.second, p.first);
           }
         }
         else{
-          if( y(extremaIndex(p.first)) < y(extremaIndex(p.second)) ){ 
+          if( y(extremaIndex(p.first)) < y(extremaIndex(p.second)) ){
             std::swap(p.second, p.first);
           }
         }
@@ -183,10 +183,10 @@ class NNMSComplex{
 
       //compute crystals based on merge chain
       mergeCrystals();
-      
+
     };
 
-   
+
 
 
     //Get partioning accordinng to the crystals of the MS-complex for the
@@ -207,6 +207,21 @@ class NNMSComplex{
       }
     };
 
+    FortranLinalg::DenseVector<int> getAscending(){
+      FortranLinalg::DenseVector<int> asc(X.N());
+      getAscending(asc);
+      return asc;
+    };
+
+    void getAscending(FortranLinalg::DenseVector<int> &m){
+      return getManifold(m, false);
+    }
+
+    void getManifold(FortranLinalg::DenseVector<int> &m, bool descend){
+      for(unsigned int i=0; i<X.N(); i++){
+        m(i) = merge(extrema(descend, i));
+      }
+    };
 
     int getNCrystals(){
       return pcrystals.size();
@@ -215,7 +230,7 @@ class NNMSComplex{
 
     int getNAllExtrema(){
       return extremaIndex.N();
-    }; 
+    };
 
     //return extrema indicies (first row is max, secon is min) for each crystal
     FortranLinalg::DenseMatrix<int> getCrystals(){
@@ -326,17 +341,17 @@ private:
           double g = ys(j) - ys(i);
           if(d == 0 ){
             /*if(g > 0){
-              g = std::numeric_limits<double>::max(); 
+              g = std::numeric_limits<double>::max();
             }
             else{
-              g = std::numeric_limits<double>::min(); 
+              g = std::numeric_limits<double>::min();
             }*/
             g = 0;
           }
           else{
-            g = g / d; 
+            g = g / d;
           }
-          
+
           if(G(0, i) < g){
             G(0, i) = g;
             KNNG(0, i) = j;
@@ -344,7 +359,7 @@ private:
           else if(G(1, i) > g){
             G(1, i) = g;
             KNNG(1, i) = j;
-          }          
+          }
           if(G(0, j) < -g){
             G(0, j) = -g;
             KNNG(0, j) = i;
@@ -363,7 +378,7 @@ private:
 
       //compute for each point its minimum and maximum based on
       //steepest ascent/descent
-      extrema = FortranLinalg::DenseMatrix<int>(2, X.N()); 
+      extrema = FortranLinalg::DenseMatrix<int>(2, X.N());
       FortranLinalg::Linalg<int>::Set(extrema, -1);
 
       std::list<int> extremaL;
@@ -373,7 +388,7 @@ private:
       std::vector<int> nPnts;
       for(int e=0; e<2; e++){
         for(unsigned int i=0; i<extrema.N(); i++){
-          
+
 /*
           int current = i;
           int prev = current;
@@ -389,13 +404,13 @@ private:
           int ind = 0;
           for(std::list<int>::iterator it = extremaL.begin();  it!=extremaL.end(); ++it){
             if((*it) == prev){
-              break; 
+              break;
             }
             ++ind;
-          }      
+          }
           extrema(e, i) = ind;
           if(ind == extremaL.size()){
-            extremaL.push_back(prev);  
+            extremaL.push_back(prev);
             nExt++;
             if(e==0){
               nMax++;
@@ -431,7 +446,7 @@ private:
             }
             for(std::list<int>::iterator it = path.begin(); it!=path.end(); ++it){
               extrema(e, *it) = ext;
-            }   
+            }
           }
 
         }
@@ -453,7 +468,7 @@ private:
 
       //initalize:
       //-persistence levels: difference between saddle point and extrema of
-      //neighboring crystals 
+      //neighboring crystals
       //-merge indices: merging to extrema
       extremaIndex = FortranLinalg::DenseVector<int>(nExt);
       merge = FortranLinalg::DenseVector<int>(nExt);
@@ -484,7 +499,7 @@ private:
                   p.second = e2;
                 }
                 pers = y(extremaIndex(p.first)) -  std::min(y(i), y(KNN(k, i)));
-                //pers = l2.distance(X, extremaIndex(e1), X, extremaIndex(e2) ); 
+                //pers = l2.distance(X, extremaIndex(e1), X, extremaIndex(e2) );
               }
               else{
                 if(y(extremaIndex(e1)) < y(extremaIndex(e2)) ){
@@ -496,7 +511,7 @@ private:
                   p.second = e2;
                 }
                 pers = std::max(y(i), y(KNN(k, i))) - y(extremaIndex(p.first));
-                //pers = l2.distance(X, extremaIndex(e1), X, extremaIndex(e2) ); 
+                //pers = l2.distance(X, extremaIndex(e1), X, extremaIndex(e2) );
               }
 
               map_pi_f_it it = pinv.find(p);
@@ -513,7 +528,7 @@ private:
           }
         }
       }
-      
+
 
       for(map_pi_f_it it = pinv.begin(); it != pinv.end(); ++it){
         persistence[(*it).second] = (*it).first;
@@ -524,14 +539,14 @@ private:
       //extrema and update remaining peristencies depending on the merge
       for(unsigned int i=0; i<merge.N(); i++){
         merge(i) = i;
-      } 
-      
+      }
+
       map_f_pi ptmp;
       map_pi_f pinv2;
       while(!persistence.empty()){
-        map_f_pi_it it = persistence.begin(); 
+        map_f_pi_it it = persistence.begin();
         std::pair<int, int> p = (*it).second;
-	
+
         //store old extrema merging pair and persistence
         std::pair<int, int> pold = p;
         double pers = (*it).first;
@@ -541,16 +556,16 @@ private:
         p.first = followChain(p.first);
         p.second = followChain(p.second);
         if(p.first < nMax){
-          if( y(extremaIndex(p.first)) > y(extremaIndex(p.second)) ){ 
-            std::swap(p.second, p.first); 
-          }
-        }
-        else{
-          if( y(extremaIndex(p.first)) < y(extremaIndex(p.second)) ){ 
+          if( y(extremaIndex(p.first)) > y(extremaIndex(p.second)) ){
             std::swap(p.second, p.first);
           }
         }
-        
+        else{
+          if( y(extremaIndex(p.first)) < y(extremaIndex(p.second)) ){
+            std::swap(p.second, p.first);
+          }
+        }
+
         //remove current merge pair from list
         persistence.erase(it);
 
@@ -588,11 +603,9 @@ private:
 
       //initialize to 0 persistence
       mergePersistence(0);
-  
+
     };
 
 
 };
-
-#endif 
-
+#endif
