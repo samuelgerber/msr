@@ -36,7 +36,7 @@ and the regression approach in
 > Gerber S, Rübel O, Bremer PT, Pascucci V, Whitaker RT  
 > J Comput Graph Stat. 2013 Jan 1;22(1):193-214.
 
-are implemented. A detailed description of the package can be found in:
+A detailed description of the package can be found in:
 
 > Data analysis with the morse-smale complex: The msr package for r  
 > S. Gerber, K. Potter  
